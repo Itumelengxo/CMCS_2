@@ -1,0 +1,114 @@
+﻿@model CMCS_2.Models.Register
+
+@{
+    ViewData["Title"] = "Register Page";
+}
+
+<!-- Custom CSS Styling -->
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #eef2f3; /* Light grey-blue background */
+        color: #333;
+        margin: 0;
+        padding: 0;
+    }
+
+    .register-container {
+        background-color: #fff; /* White background for the form */
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Slight shadow */
+        width: 400px;
+        padding: 20px;
+        margin: 50px auto; /* Centering the form */
+        text-align: left;
+    }
+
+    h2 {
+        text-align: center;
+        color: #4CAF50; /* Green heading */
+    }
+
+    label {
+        display: block;
+        margin: 10px 0 5px;
+        color: #555;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    select {
+        width: 100%;
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+    }
+
+    input[type="submit"] {
+        background-color: #4CAF50; /* Green submit button */
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 15px;
+    }
+
+    input[type="submit"]:hover {
+        background-color: #45a049; /* Darker green on hover */
+    }
+
+    .text-center {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .text-center a {
+        text-decoration: none;
+        color: #4CAF50; /* Link color */
+        font-weight: bold;
+    }
+
+    .text-center a:hover {
+        color: #45a049; /* Darker green on hover */
+    }
+</style>
+
+<!-- Register Form -->
+<div class="register-container">
+    <h2>Register Page</h2>
+
+    <form method="post" asp-action="Register_user">
+        <label>Name:</label>
+        <input type="text" asp-for="Username" required />
+        <br/>
+
+        <label>Email:</label>
+        <input type="email" asp-for="Email" required />
+        <br/>
+
+        <label>Role:</label>
+        <select asp-for="Role" required>
+            <option selected disabled>select role here</option>
+            <option value="student">Student</option>
+            <option value="lecture">Lecture</option>
+            <option value="pm">PM</option>
+        </select>
+        <br/>
+
+        <label>Password:</label>
+        <input type="password" asp-for="Password" required />
+        <br/>
+
+        <input type="submit" value="Register now" />
+    </form>
+
+    <br/>
+    <div class="text-center">
+        <a href="/Home/Login">Already have an account? Login here</a>
+    </div>
+</div>
