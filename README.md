@@ -1,4 +1,4 @@
-Step 1. Clone the Repository: Use the git clone command followed by the repository URL.
+Step 1. click clone .Clone the Repository: Use the git clone command followed by the repository URL.
 Step 2: Open the Project in Visual Studio
 Open Visual Studio: Launch Visual Studio on your computer. 
 Click "Clone Repository"
