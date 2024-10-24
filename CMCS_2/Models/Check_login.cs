@@ -1,56 +1,49 @@
-﻿using System.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient; 
+using System;
 
 namespace CMCS_2.Models
 {
     public class Check_login
     {
-
-        //add properties
+        // Properties
         public string? Email { get; set; }
-
         public string? Role { get; set; }
-
         public string? Password { get; set; }
 
-        //connection string
+        // Connection string
         Connection connect = new Connection();
 
-        //METHOD to check the user
+        // Method to check the user
         public string login_user(string emails, string roles, string passwords)
         {
-            //temp message 
             string message = "";
             try
             {
-                //connect and open
+                // Connect and open
                 using (SqlConnection connects = new SqlConnection(connect.connecting()))
                 {
-                    //open connection
+                    // Open connection
                     connects.Open();
 
-                    //query-to retrieve
-                    string query = "SELECT * FROM users WHERE email='" + emails + "'AND password='" + passwords + "';";
+                    // Query to retrieve user data
+                    string query = "SELECT * FROM users WHERE email='" + emails + "' AND password='" + passwords + "';";
 
-                    //string query = "SELECT * FROM users WHERE email = @Email AND role = @Role AND password = @Password"
+                    // Alternatively, you can use parameterized query to prevent SQL injection:
+                    // string query = "SELECT * FROM users WHERE email = @Email AND password = @Password";
+                    // SqlCommand prepare = new SqlCommand(query, connects);
+                    // prepare.Parameters.AddWithValue("@Email", emails);
+                    // prepare.Parameters.AddWithValue("@Password", passwords);
 
-
-                    /*
-                    check if it recieves data"
-                    Console.WriteLine(emails + " AND " + passwords);
-                    */
-
-                    //prepare to execute
+                    // Prepare to execute
                     using (SqlCommand prepare = new SqlCommand(query, connects))
                     {
-                        //read the data
+                        // Read the data
                         using (SqlDataReader find_user = prepare.ExecuteReader())
                         {
-                            //then check if the user is found
+                            // Check if the user is found
                             if (find_user.HasRows)
                             {
-                                //then assign message
                                 message = "found";
-
                             }
                             else
                             {
@@ -59,12 +52,12 @@ namespace CMCS_2.Models
                         }
                     }
 
-                    //Close the connection
+                    // Close the connection
                     connects.Close();
 
                     if (message == "found")
                     {
-                        upadate_active(Email);
+                        update_active(emails); // Pass the correct email
                     }
                 }
             }
@@ -72,13 +65,13 @@ namespace CMCS_2.Models
             {
                 message = error_db.Message;
             }
+
             return message;
         }
 
-        //update active method
-        public void upadate_active(string email)
+        // Update active method
+        public void update_active(string email)
         {
-
             try
             {
                 using (SqlConnection connects = new SqlConnection(connect.connecting()))
@@ -94,15 +87,11 @@ namespace CMCS_2.Models
 
                     connects.Close();
                 }
-
-
             }
             catch (IOException error)
             {
-                Console.WriteLine("Error" + error.Message);
+                Console.WriteLine("Error: " + error.Message);
             }
         }
-
-
     }
 }

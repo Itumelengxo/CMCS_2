@@ -1,7 +1,9 @@
 using CMCS_2.Models;
 using Microsoft.AspNetCore.Mvc;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Diagnostics;
+using System.IO;
+using System.Collections.Generic;
 
 namespace CMCS_2.Controllers
 {
@@ -16,21 +18,19 @@ namespace CMCS_2.Controllers
 
         public IActionResult Index()
         {
-            //1st check the connection
+            // First check the connection
             try
             {
                 Connection con = new Connection();
 
-                //then check 
+                // Check connection
                 using (SqlConnection connect = new SqlConnection(con.connecting()))
                 {
-                    //open the connection
+                    // Open the connection
                     connect.Open();
-                    Console.WriteLine("connected");
+                    Console.WriteLine("Connected");
                     connect.Close();
                 }
-
-
             }
             catch (IOException error)
             {
@@ -55,26 +55,20 @@ namespace CMCS_2.Controllers
         [HttpPost]
         public IActionResult Register_user(Register add_user)
         {
-            //collect user data
+            // Collect user data
             string name = add_user.Username;
             string email = add_user.Email;
             string password = add_user.Password;
             string role = add_user.Role;
 
-            /*
-            //check if all are collected
-            Console.WriteLine("Name: " + name + "\nEmail: " + email + "\nRole: " + role);
-            */
-
-            //pass all the values to insert method
+            // Pass all values to insert method
             string message = add_user.insert_user(name, email, password, role);
 
-            //the check if the user inserted
+            // Check if the user is inserted
             if (message == "done")
             {
                 Console.WriteLine(message);
                 return RedirectToAction("Login", "Home");
-
             }
             else
             {
@@ -139,9 +133,7 @@ namespace CMCS_2.Controllers
                 }
             }
 
-
             string message = insert.insert_claim(module_name, hour_work, hour_rate, description, filename);
-
 
             if (message == "done")
             {
@@ -166,19 +158,72 @@ namespace CMCS_2.Controllers
         {
             Get_Claims collect = new Get_Claims();
 
-            // You can retrieve the list of claims from your database or model here.
-            // collect.LoadClaims(); (example function to load claims)
+            // Here we assume that Get_Claims constructor loads data
+            if (collect.Email.Count > 0)
+            {
+                return View(collect);
+            }
+            else
+            {
+                Console.WriteLine("No claims found");
+                return View("NoClaims"); // View to show no claims available
+            }
+        }
 
-            return View(collect);
+        // Approve Claims Method
+        public IActionResult Approve()
+        {
+            Get_Claims collect = new Get_Claims();
+
+            // Fetch pending claims
+            var pendingClaims = collect.GetPendingClaims();
+
+            return View(pendingClaims);
         }
 
         // Approve Claim Method
-        public IActionResult Approve()
+        [HttpPost]
+        public IActionResult ApproveClaim(string id, string action)
         {
-            // Add logic to fetch the list of pending claims for approval, if needed.
-            // You could also handle the logic for approving a claim here.
+            if (action == "approve")
+            {
+                // Logic to update the claim status in the database to "approved"
+                UpdateClaimStatus(id, "approved");
+                TempData["Message"] = "Claim approved successfully.";
+            }
+            else if (action == "decline")
+            {
+                // Logic to update the claim status in the database to "declined"
+                UpdateClaimStatus(id, "declined");
+                TempData["Message"] = "Claim declined successfully.";
+            }
 
-            return View();
+            return RedirectToAction("Approve");
+        }
+
+        private void UpdateClaimStatus(string claimId, string status)
+        {
+            try
+            {
+                using (SqlConnection connect = new SqlConnection(new Connection().connecting()))
+                {
+                    connect.Open();
+                    string query = "UPDATE claiming SET status = @status WHERE user_id = @id;";
+
+                    using (SqlCommand command = new SqlCommand(query, connect))
+                    {
+                        command.Parameters.AddWithValue("@status", status);
+                        command.Parameters.AddWithValue("@id", claimId);
+                        command.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions as needed
+                Console.WriteLine("Error updating claim status: " + ex.Message);
+            }
         }
     }
 }
+
