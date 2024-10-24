@@ -2,7 +2,7 @@
 {
     public class ClaimModel
     {
-        //Claim model
+
         public string Email { get; set; }
         public string Module { get; set; }
         public string Id { get; set; }
