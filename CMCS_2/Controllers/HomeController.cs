@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
-using System.Collections.Generic;
 
 namespace CMCS_2.Controllers
 {
@@ -18,15 +17,12 @@ namespace CMCS_2.Controllers
 
         public IActionResult Index()
         {
-            // First check the connection
             try
             {
                 Connection con = new Connection();
 
-                // Check connection
                 using (SqlConnection connect = new SqlConnection(con.connecting()))
                 {
-                    // Open the connection
                     connect.Open();
                     Console.WriteLine("Connected");
                     connect.Close();
@@ -51,56 +47,41 @@ namespace CMCS_2.Controllers
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
 
-        // Register POST method
         [HttpPost]
         public IActionResult Register_user(Register add_user)
         {
-            // Collect user data
-            string name = add_user.Username;
-            string email = add_user.Email;
-            string password = add_user.Password;
-            string role = add_user.Role;
+            string message = add_user.insert_user(add_user.Username, add_user.Email, add_user.Password, add_user.Role);
 
-            // Pass all values to insert method
-            string message = add_user.insert_user(name, email, password, role);
-
-            // Check if the user is inserted
             if (message == "done")
             {
-                Console.WriteLine(message);
+                TempData["Message"] = "User registered successfully.";
                 return RedirectToAction("Login", "Home");
             }
             else
             {
-                Console.WriteLine(message);
+                TempData["Error"] = "Registration failed. Please try again.";
                 return RedirectToAction("Index", "Home");
             }
         }
 
-        // Login page
         public IActionResult Login()
         {
             return View();
         }
 
-        // Login POST method
         [HttpPost]
         public IActionResult Login_user(Check_login user)
         {
-            string email = user.Email;
-            string password = user.Password;
-            string role = user.Role;
-
-            string message = user.login_user(email, role, password);
+            string message = user.login_user(user.Email, user.Role, user.Password);
 
             if (message == "found")
             {
-                Console.WriteLine(message);
+                TempData["Message"] = "Login successful.";
                 return RedirectToAction("Dashboard", "Home");
             }
             else
             {
-                Console.WriteLine(message);
+                TempData["Error"] = "Invalid credentials.";
                 return RedirectToAction("Login", "Home");
             }
         }
@@ -108,15 +89,44 @@ namespace CMCS_2.Controllers
         [HttpPost]
         public IActionResult Claim_Sub(IFormFile file, Claim insert)
         {
-            string module_name = insert.User_Name;
-            string hour_work = insert.Hours_worked;
-            string hour_rate = insert.Hour_Rate;
-            string description = insert.Description;
-            string filename = "no file";
+            string filename = SaveUploadedFile(file);
 
+            if (filename == null)
+            {
+                TempData["Error"] = "File upload failed.";
+                return RedirectToAction("Dashboard", "Home");
+            }
+
+            string message = insert.insert_claim(insert.User_Name, insert.Hours_worked, insert.Hour_Rate, insert.Description, filename);
+
+            if (message == "done")
+            {
+                // Auto-approve claim if it meets criteria
+                bool isAutoApprovable = CheckAutoApprovalCriteria(insert.Hours_worked, insert.Hour_Rate);
+
+                if (isAutoApprovable)
+                {
+                    AutoApproveClaim(insert.ClaimId);
+                    TempData["Message"] = "Claim submitted and auto-approved.";
+                }
+                else
+                {
+                    TempData["Message"] = "Claim submitted successfully. Pending approval.";
+                }
+            }
+            else
+            {
+                TempData["Error"] = "Error submitting claim. Please try again.";
+            }
+
+            return RedirectToAction("Dashboard", "Home");
+        }
+
+        private string SaveUploadedFile(IFormFile file)
+        {
             if (file != null && file.Length > 0)
             {
-                filename = Path.GetFileName(file.FileName);
+                string filename = Path.GetFileName(file.FileName);
                 string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/pdf");
 
                 if (!Directory.Exists(folderPath))
@@ -126,79 +136,62 @@ namespace CMCS_2.Controllers
 
                 string filePath = Path.Combine(folderPath, filename);
 
-                using (var stream = new FileStream(filePath, FileMode.Create))
+                try
                 {
-                    file.CopyTo(stream);
-                    Console.WriteLine("File " + filename + " is successfully uploaded");
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        file.CopyTo(stream);
+                        Console.WriteLine($"File {filename} uploaded successfully.");
+                        return filename;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error uploading file: " + ex.Message);
+                    return null;
                 }
             }
 
-            string message = insert.insert_claim(module_name, hour_work, hour_rate, description, filename);
-
-            if (message == "done")
-            {
-                Console.WriteLine(message);
-                return RedirectToAction("Dashboard", "Home");
-            }
-            else
-            {
-                Console.WriteLine(message);
-                return RedirectToAction("Dashboard", "Home");
-            }
+            return null;
         }
 
-        // Open Dashboard
-        public IActionResult Dashboard()
+        private bool CheckAutoApprovalCriteria(string hoursWorked, string hourlyRate)
         {
-            return View();
+            int maxHours = 40; // Example criteria: Maximum hours for auto-approval
+            decimal minRate = 50.0m;
+            decimal maxRate = 200.0m;
+
+            if (int.TryParse(hoursWorked, out int hours) &&
+                decimal.TryParse(hourlyRate, out decimal rate))
+            {
+                return hours <= maxHours && rate >= minRate && rate <= maxRate;
+            }
+
+            return false;
         }
 
-        // View Claims Method
-        public IActionResult View_Claims()
+        private void AutoApproveClaim(string claimId)
         {
-            Get_Claims collect = new Get_Claims();
-
-            // Here we assume that Get_Claims constructor loads data
-            if (collect.Email.Count > 0)
+            try
             {
-                return View(collect);
+                using (SqlConnection connect = new SqlConnection(new Connection().connecting()))
+                {
+                    connect.Open();
+                    string query = "UPDATE claiming SET status = 'Approved' WHERE claim_id = @id;";
+
+                    using (SqlCommand command = new SqlCommand(query, connect))
+                    {
+                        command.Parameters.AddWithValue("@id", claimId);
+                        command.ExecuteNonQuery();
+                    }
+                }
+
+                Console.WriteLine($"Claim {claimId} auto-approved successfully.");
             }
-            else
+            catch (Exception ex)
             {
-                Console.WriteLine("No claims found");
-                return View("NoClaims"); // View to show no claims available
+                Console.WriteLine("Error auto-approving claim: " + ex.Message);
             }
-        }
-
-        // Approve Claims Method
-        public IActionResult Approve()
-        {
-            Get_Claims collect = new Get_Claims();
-
-            // Fetch pending claims
-            var pendingClaims = collect.GetPendingClaims();
-
-            return View(pendingClaims);
-        }
-
-        // Approve Claim Method
-        [HttpPost]
-        public IActionResult ApproveClaim(string id, string action)
-        {
-            if (action == "approve")
-            {
-                // Logic to update the claim status in the database to "approved"
-                UpdateClaimStatus(id, "approved");
-                TempData["Message"] = "Claim approved successfully.";
-            }
-            else if (action == "decline")
-            {
-                // Logic to update the claim status in the database to "declined"
-                UpdateClaimStatus(id, "declined");
-                TempData["Message"] = "Claim declined successfully.";
-            }
-
-            return RedirectToAction("Approve");
         }
 
         private void UpdateClaimStatus(string claimId, string status)
@@ -208,7 +201,7 @@ namespace CMCS_2.Controllers
                 using (SqlConnection connect = new SqlConnection(new Connection().connecting()))
                 {
                     connect.Open();
-                    string query = "UPDATE claiming SET status = @status WHERE user_id = @id;";
+                    string query = "UPDATE claiming SET status = @status WHERE claim_id = @id;";
 
                     using (SqlCommand command = new SqlCommand(query, connect))
                     {
@@ -220,10 +213,8 @@ namespace CMCS_2.Controllers
             }
             catch (Exception ex)
             {
-                // Handle exceptions as needed
                 Console.WriteLine("Error updating claim status: " + ex.Message);
             }
         }
     }
 }
-

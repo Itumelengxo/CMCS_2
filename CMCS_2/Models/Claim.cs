@@ -10,6 +10,7 @@ namespace CMCS_2.Models
         public string Hours_worked { get; set; }
         public string Hour_Rate { get; set; }
         public string Description { get; set; }
+        public string ClaimId { get; internal set; }
 
         //Always connect when having ti use sql
         Connection connect = new Connection();
