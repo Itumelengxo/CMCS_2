@@ -16,3 +16,16 @@ If you encounter issues during cloning, building, or running the application, ch
 Ensure you have the correct version of the .NET SDK that the project targets.
 Make sure all dependencies are correctly restored.
 Check for any errors in the Error List window in Visual Studio.
+Auto-Approval Integration:
+
+Added a CheckAutoApprovalCriteria method to evaluate whether the claim meets predefined criteria.
+Updated Claim_Sub to auto-approve claims if criteria are met.
+File Handling:
+
+Extracted file-saving logic to a helper method (SaveUploadedFile) for better modularity.
+Improved Error Messages:
+
+Used TempData for passing success or error messages to views.
+General Cleanup:
+
+Enhanced code readability by breaking complex logic into smaller, reusable methods.
